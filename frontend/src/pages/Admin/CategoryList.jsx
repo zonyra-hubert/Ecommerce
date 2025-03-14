@@ -8,16 +8,18 @@ import {
   useFetchCategoriesQuery,
 } from "../../redux/api/categoryApiSlice";
 import CategoryForm from "../../components/CategoryForm";
+import Modal from "../../components/Modal";
 const CategoryList = () => {
   const { data: categories } = useFetchCategoriesQuery();
   const [name, setName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [updateName, setUpdateName] = useState("");
-  const [modelVisible, setModelVisible] = useState(false);
+  const [updatingName, setUpdatingName] = useState("");
+  const [modalVisible, setModalVisible] = useState(false);
 
   const [createCategory] = useCreateCategoryMutation();
   const [updateCategory] = useUpdateCategoryMutation();
   const [deleteCategory] = useDeleteCategoryMutation();
+
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     if (!name) {
@@ -32,12 +34,57 @@ const CategoryList = () => {
       } else {
         setName("");
         toast.success(`${result.name} is created successfully`);
-        setModelVisible(false);
-        await refetch();
+        setModalVisible(false);
+        // await refetch();
       }
     } catch (error) {
       console.log(error);
       toast.error("Category creation failed, try again");
+    }
+  };
+  const handleUpdateCategory = async (e) => {
+    e.preventDefault();
+
+    if (!updatingName) {
+      toast.error("Category name is required");
+      return;
+    }
+
+    try {
+      const result = await updateCategory({
+        categoryId: selectedCategory._id,
+        updatedCategory: {
+          name: updatingName,
+        },
+      }).unwrap();
+
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(`${result.name} is updated`);
+        setSelectedCategory(null);
+        setUpdatingName("");
+        setModalVisible(false);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    try {
+      const result = await deleteCategory(selectedCategory._id).unwrap();
+
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(`${result.name} is deleted.`);
+        setSelectedCategory(null);
+        setModalVisible(false);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Category delection failed. Tray again.");
     }
   };
 
@@ -60,9 +107,9 @@ const CategoryList = () => {
                 className="bg-white border border-pink-500 text-pink-500 py-2 px-4 rounded-lg m-3 hover:bg-pink-500 hover:text-white
         focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50"
                 onClick={() => {
-                  setModelVisible(true);
+                  setModalVisible(true);
                   setSelectedCategory(category);
-                  setUpdateName(category.name);
+                  setUpdatingName(category.name);
                 }}
               >
                 {category.name}
@@ -70,6 +117,15 @@ const CategoryList = () => {
             </div>
           ))}
         </div>
+        <Modal isOpen={modalVisible} onClose={() => setModalVisible(false)}>
+          <CategoryForm
+            value={updatingName}
+            setValue={(value) => setUpdatingName(value)}
+            handleSubmit={handleUpdateCategory}
+            buttonText="Update"
+            handleDelete={handleDeleteCategory}
+          />
+        </Modal>
       </div>
     </div>
   );
